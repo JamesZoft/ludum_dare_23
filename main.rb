@@ -71,14 +71,19 @@ class World
   end
 
   def draw(offset_x, offset_y, max_width, max_height, camera_x, camera_y)
-    @tilemap.length.times do |y|
+    n = Time.now
+    y_start = (camera_y/32).to_i
+    y_finish = @tilemap.length
+    (y_start..(y_finish - 1)).each do |y|
       if (y * 32) > (max_height + camera_y)
         break
       end
       if (y * 32 + 32) < camera_y
         next
       end
-      @tilemap[0].length.times do |x|
+      x_start = (camera_x/32).to_i
+      x_finish = @tilemap[0].length
+      (x_start..(x_finish - 1)).each do |x|
         if (x * 32) > (max_width + camera_x)
           break
         end
@@ -92,6 +97,10 @@ class World
         end
       end
     end
+    m = Time.now
+    x = ((m - n)*1000).to_i
+    puts x
+    #sleep(0.5)
   end
   
 end
@@ -139,8 +148,8 @@ class Player
   	puts "in move"
     @x += @vel_x
     @y += @vel_y
-    @x %= 640
-    @y %= 480
+    @x %= 32*2000
+    @y %= 32*2000
 
     @vel_x *= 0.95
     @vel_y *= 0.95
