@@ -12,40 +12,68 @@ class GameWindow < Gosu::Window
     self.caption = "Ludum Dare 23"
     @height = self.height
     @width = self.width
-    @image = Gosu::Image.new(self, "sprite_forwards.png", true)
+    @image = Gosu::Image.new(self, "big_sprite_forwards.png", true)
     @world = World.new(self)
     @player = Player.new(self)
-    @player.warp(340, 322.5)
+    @player.warp(340, 423)
     @camera_x = @player.x - @width/2
     @camera_y = @player.y - @height/2
+    @player_jumped = false
+    @jump_counter = 0
+    @player_y_before_jump = 423
   end
 
   def draw
     @world.draw(-@camera_x, -@camera_y, @width, @height, @camera_x, @camera_y)
-    @image.draw_rot(@player.x - @camera_x, @player.y - @camera_y, 1, 0.0)
+    @player.image.draw_rot(@player.x - @camera_x, @player.y - @camera_y, 1, 0.0)
   end
 
 
   def update
-    if button_down? Gosu::KbLeft or button_down? Gosu::KbA then
-      puts "in update"
+    puts @player_jumped
+#    if @player_y_before_jump > (@player.y - 0.8)
+  #    @player_jumped = false
+ #   end
+    
+    if @player_jumped == true && (not (@player.y > @player_y_before_jump - 0.8))
+      if @jump_counter >= 40
+        @player.jump(-1)
+        @player_jumped = false
+        @jump_counter = 0
+      else
+        @jump_counter += 1
+      end
+    end
+    
+    if button_down? Gosu::KbA then
       @player.accelerate_backwards(0.65)
     end
-    if button_down? Gosu::KbRight or button_down? Gosu::KbD then
-      puts "in update"
+    if button_down? Gosu::KbD then
       @player.accelerate_forwards(0.65)
     end
-    if button_down? Gosu::KbUp or button_down? Gosu::KbW or button_down? Gosu::KbSpace then
-      @player.jump
+    if button_down? Gosu::KbW 
+      @player.unshrink
     end
-      if button_down? Gosu::KbDown or button_down? Gosu::KbS then
+    
+    if @player.y > (@player_y_before_jump - 0.8)
+      if button_down? Gosu::KbSpace and !@pressed
+        @pressed=true
+        @player.jump(1)
+        @player_jumped = true
+      elsif not button_down?(Gosu::KbSpace)
+        @pressed=nil
+      end
+    end
+    if not @player_jumped
+      @player_y_before_jump = @player.y
+    end 
+    if button_down? Gosu::KbS then
+      puts "shrink"
       @player.shrink
     end 
     @player.move
     @camera_x = @player.x - @width/2
-    @camera_y = @player.y - @height/2
-    #@camera_x = [[@player.x - 320, 0].max, @width * 50 - 640].min
-    #@camera_y = [[@player.y - 240, 0].max, @height * 50 - 480].min
+      @camera_y = 423 - @height/2
   end
 
   def button_down(id)
@@ -61,7 +89,7 @@ class World
     @tileset = Gosu::Image.load_tiles(window, "tileset.png", 32, 32, true)
     @tilemap = Array.new(2000) do |y|
       Array.new(2000) do |x|
-        if x <= 100/8
+        if x <= 100/7
           Tiles::Sky
         else
           Tiles::Grass
@@ -72,18 +100,18 @@ class World
 
   def draw(offset_x, offset_y, max_width, max_height, camera_x, camera_y)
     n = Time.now
-    y_start = (camera_y/32).to_i
-    y_finish = @tilemap.length
-    (y_start..(y_finish - 1)).each do |y|
+    startx = [(camera_x.to_i/32), 0].max
+    finish_x = [(camera_x+max_width+1).to_i/32, 1999].min
+    starty = [(camera_y.to_i/32), 0].max
+    finish_y = [(camera_y+max_height+1).to_i/32, 1999].min
+    (starty..finish_y).each do |y|
       if (y * 32) > (max_height + camera_y)
         break
       end
       if (y * 32 + 32) < camera_y
         next
       end
-      x_start = (camera_x/32).to_i
-      x_finish = @tilemap[0].length
-      (x_start..(x_finish - 1)).each do |x|
+      (startx..finish_x).each do |x|
         if (x * 32) > (max_width + camera_x)
           break
         end
@@ -91,7 +119,6 @@ class World
           next
         end
         tile = @tilemap[x][y]
-        #puts tile
         if tile
           @tileset[tile].draw(x * 32 + offset_x, y * 32 + offset_y, 0)
         end
@@ -99,20 +126,25 @@ class World
     end
     m = Time.now
     x = ((m - n)*1000).to_i
-    puts x
-    #sleep(0.5)
+  end
+  
+  def place_obstacle
+    
   end
   
 end
 
 class Player
   
-  attr_reader :x, :y
+  attr_reader :x, :y, :image
   
   def initialize(window)
-    @image = Gosu::Image.new(window, "sprite_forwards.png", false)
+    @big_image = Gosu::Image.new(window, "big_sprite_forwards.png", false)
+    @small_image = Gosu::Image.new(window, "sprite_forwards.png", false)
+    @image = @big_image
     @x = @y = @vel_x = @vel_y = @angle = 0.0
     @score = 0
+    @jumped = false
   end
 
   def warp(x, y)
@@ -127,14 +159,31 @@ class Player
     @angle += 4.5
   end
 
-	def jump
+	def jump(modifier)
+	  if modifier == 1
+      @vel_y += Gosu::offset_y(0.0, 2.5)
+    else
+      @vel_y -= Gosu::offset_y(0.0, 2.5)
+    end
 	end
 	
 	def shrink
+	  if @image != @small_image
+	    @image = @small_image
+	    warp(@x + 0, @y + 45)
+	  end
+	  
+	end
+	
+	def unshrink
+	  if @image != @big_image
+	    @image = @big_image
+	    warp(@x + 0, @y -45)
+	  end
+	  
 	end
 
   def accelerate_forwards(acceleration)
-  	puts "in accelerate_forwards"
     @vel_x += Gosu::offset_x(@angle + 90, acceleration)
     @vel_y += Gosu::offset_y(@angle + 90, acceleration)
   end
@@ -145,7 +194,6 @@ class Player
   end
 
   def move
-  	puts "in move"
     @x += @vel_x
     @y += @vel_y
     @x %= 32*2000
@@ -161,7 +209,7 @@ class Player
   end
 
   def draw
-  	puts "in draw"
+    puts "draw"
     @image.draw_rot(@x, @y, 1, @angle)
   end
 end
