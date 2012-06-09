@@ -140,11 +140,20 @@ class Player
   
   def initialize(window)
     @big_image = Gosu::Image.new(window, "big_sprite_forwards.png", false)
-    @small_image = Gosu::Image.new(window, "sprite_forwards.png", false)
+    @small_image = false
     @image = @big_image
     @x = @y = @vel_x = @vel_y = @angle = 0.0
     @score = 0
     @jumped = false
+    unshrink
+  end
+  
+  def unshrink
+    @size = 2
+  end
+  
+  def shrink
+    @size = 1
   end
 
   def warp(x, y)
@@ -165,22 +174,6 @@ class Player
     else
       @vel_y -= Gosu::offset_y(0.0, 2.5)
     end
-	end
-	
-	def shrink
-	  if @image != @small_image
-	    @image = @small_image
-	    warp(@x + 0, @y + 45)
-	  end
-	  
-	end
-	
-	def unshrink
-	  if @image != @big_image
-	    @image = @big_image
-	    warp(@x + 0, @y -45)
-	  end
-	  
 	end
 
   def accelerate_forwards(acceleration)
@@ -209,8 +202,7 @@ class Player
   end
 
   def draw
-    puts "draw"
-    @image.draw_rot(@x, @y, 1, @angle)
+    @image.draw_rot(@x, @y, 1, @angle, 0.5, 1, @size, @size)
   end
 end
 
